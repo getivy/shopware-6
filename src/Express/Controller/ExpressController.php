@@ -141,7 +141,6 @@ class ExpressController extends StorefrontController
                 $contextToken = $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN];
                 $this->logger->info('found context token ' . $contextToken);
                 $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
-                $this->logger->info('loaded context with token : ' . $salesChannelContext->getToken() . ' customerId: ' . $salesChannelContext->getCustomerId());
 
                 $updated =  $this->expressService->updateUser( $payload, $contextToken, $salesChannelContext);
                 if (!$updated) {
@@ -160,7 +159,6 @@ class ExpressController extends StorefrontController
                     $contextToken = $storeApiResponse->headers->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
                     $this->logger->info('new context token: ' .  $contextToken);
                     $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
-                    $this->logger->info('loaded new context. Token: ' . $salesChannelContext->getToken() . ', customerId: ' . $salesChannelContext->getCustomerId());
                     $this->logger->info('save new context token');
                     $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN] = $contextToken;
                     $ivyPaymentSession->setExpressTempData($tempData);
