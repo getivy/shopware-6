@@ -22,9 +22,9 @@
                 data-variant="cart"
                 data-value="{{ page.cart.price.netPrice }}"
                 data-currency="{{ context.currency.isoCode }}"
-                data-category="{{ page.IvyMcc}}"
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
+                data-theme = "{% if config('WizmoGmbhIvyPayment.config.darkThemeOffCanva') %}dark{% else %}light{% endif %}"
             ></div>
             <template data-src="{{ page.IvyBannerUrl}}"></template>
         </div>
