@@ -47,18 +47,16 @@
             <template data-src="{{ page.IvyButtonUrl }}"></template>
         </div>
     {% else %}
-        <div id="IvyOffcanvasCart">
-            <div
-                class="ivy-banner"
-                data-variant="product"
-                data-value="{{ ivyPrice }}"
-                data-currency="{{ context.currency.isoCode }}"
-                data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
-                data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
-                data-theme = "{% if config('WizmoGmbhIvyPayment.config.darkThemeDetail') %}dark{% else %}light{% endif %}"
-            ></div>
-            <template data-src="{{ page.IvyBannerUrl}}"></template>
-        </div>
+        <div
+            class="ivy-banner"
+            data-variant="product"
+            data-value="{{ ivyPrice }}"
+            data-currency="{{ context.currency.isoCode }}"
+            data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+            data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
+            data-theme = "{% if config('WizmoGmbhIvyPayment.config.darkThemeDetail') %}dark{% else %}light{% endif %}"
+        ></div>
+        <template data-src="{{ page.IvyBannerUrl}}"></template>
     {% endif %}
     </div>
 {% endblock %}
