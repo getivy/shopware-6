@@ -59,19 +59,19 @@
 
     <card>
         <title>API Access Staging Environment</title>
-        <title lang="de-DE">API-Zugang Produktivmodus</title>
+        <title lang="de-DE">API-Zugang Staging Zugang</title>
 
         <input-field>
             <name>ProductionIvyApiKey</name>
             <label>Staging Ivy API Key</label>
-            <label lang="de-DE">Ivy API Key</label>
+            <label lang="de-DE">Staging Ivy API Key</label>
             <required>1</required>
         </input-field>
 
         <input-field type="password">
             <name>ProductionIvyWebhookSecret</name>
             <label>Staging Webhook signing secret</label>
-            <label lang="de-DE">Webhook signing secret</label>
+            <label lang="de-DE">Staging Webhook signing secret</label>
             <required>1</required>
         </input-field>
 
