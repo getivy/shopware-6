@@ -1032,8 +1032,6 @@ class ExpressService
             throw new IvyException('Can not add discout: ' . $e->getMessage());
         }
 
-        $lineItem = $cart->getLineItems()->last();
-
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
