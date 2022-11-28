@@ -1025,6 +1025,9 @@ class ExpressService
             throw new IvyException('Discount code is required');
         }
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
+
+        $lineItem = null;
+
         try {
             $lineItem = $this->promotionItemBuilder->buildPlaceholderItem($code);
             $cart = $this->cartService->add($cart, $lineItem, $salesChannelContext);
