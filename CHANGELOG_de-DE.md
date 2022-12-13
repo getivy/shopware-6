@@ -1,3 +1,15 @@
+# 1.1.20
+- Angezeigt Shopware ID wird nun in den Bestätigunsmails gezeigt
+# 1.1.19
+- Fixes bei Discounts
+# 1.1.18
+- Fixes bei Discounts
+# 1.1.17
+- Kleine Anpassungen in der Checkout Darstellung
+# 1.1.16
+- Interne Deployment Verbesserungen
+# 1.1.15
+- Interne Workflow Verbesserungen
 # 1.1.14
 - Anrede Fehler ist gefixt
 # 1.1.13

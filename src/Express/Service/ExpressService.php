@@ -5,6 +5,7 @@ namespace WizmoGmbh\IvyPayment\Express\Service;
 use Doctrine\DBAL\Exception;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
+use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\SalesChannel\AbstractOrderRoute;
@@ -36,7 +37,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
@@ -45,7 +45,6 @@ use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
-use WizmoGmbh\IvyPayment\IvyApi\lineItem;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class ExpressService
@@ -174,7 +173,7 @@ class ExpressService
         array $data = []
     ) : JsonResponse
     {
-        $request = new Request([],$data);
+        $request = new Request([], $data);
         $request->setMethod($method);
         $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
         /** @var JsonResponse $response */
@@ -184,6 +183,24 @@ class ExpressService
             $salesChannelContext->getContext()
         );
         return $response;
+    }
+
+    /**
+     * @param SalesChannelContext $salesChannelContext
+     * @return SalesChannelContext
+     */
+    public function switchPaymentMethod(SalesChannelContext $salesChannelContext): SalesChannelContext
+    {
+        $this->logger->info('set ivy payment method');
+        $switchData = [
+            'paymentMethodId'  => $this->getPaymentMethodId(),
+        ];
+        try {
+            $this->channelContextSwitcher->update(new DataBag($switchData), $salesChannelContext);
+        } catch (\Exception $e) {
+            $this->logger->warning('shipping not allowed. skip.');
+        }
+        return $this->reloadContext($salesChannelContext);
     }
 
     /**
@@ -238,7 +255,6 @@ class ExpressService
         }
         $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
         $outputData['shippingMethods'] = $shippingMethods;
-
         /* TEMP
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
         $config = $this->configHandler->getFullConfig($salesChannelContext);
@@ -313,8 +329,8 @@ class ExpressService
         }
         $this->logger->info('found country id ' . $countryId);
         $switchData = [
-            'countryId'        => $countryId,
-            'paymentMethodId'  => $this->getPaymentMethodId(),
+            'countryId'       => $countryId,
+            'paymentMethodId' => $this->getPaymentMethodId(),
         ];
         $this->channelContextSwitcher->update(new DataBag($switchData), $salesChannelContext);
         return true;
@@ -357,9 +373,9 @@ class ExpressService
         }
 
         $tempData = [
-            'express' => false,
+            'express'                             => false,
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
-            'sessionId' => $request->getSession()->getId(),
+            'sessionId'                           => $request->getSession()->getId(),
         ];
 
         $this->ivyPaymentSessionRepository->upsert([
@@ -416,9 +432,9 @@ class ExpressService
         }
 
         $tempData = [
-            'express' => true,
+            'express'                             => true,
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
-            'sessionId' => $request->getSession()->getId(),
+            'sessionId'                           => $request->getSession()->getId(),
         ];
 
         $this->ivyPaymentSessionRepository->upsert([
@@ -524,19 +540,21 @@ class ExpressService
     {
         $this->logger->debug('try to update user');
         $userData = $this->prepareUserData($data, $salesChannelContext);
-        if (!empty($userData)) {
-            $request = new Request([], []);
-            $request->setMethod('POST');
-            $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
-            /** @var JsonResponse $response */
-            $response = $this->salesChannelProxyController->proxy('account/customer',
-                $salesChannelContext->getSalesChannelId(),
-                $request,
-                $salesChannelContext->getContext()
-            );
-            $customerData = \json_decode((string)$response->getContent(), true);
-            if (isset($customerData['guest']) && $customerData['guest']) {
-                $this->logger->info('already guest -> update');
+
+        $request = new Request([], []);
+        $request->setMethod('POST');
+        $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+        /** @var JsonResponse $response */
+        $response = $this->salesChannelProxyController->proxy(
+            'account/customer',
+            $salesChannelContext->getSalesChannelId(),
+            $request,
+            $salesChannelContext->getContext()
+        );
+        $customerData = \json_decode((string)$response->getContent(), true);
+        if (isset($customerData['guest']) && $customerData['guest']) {
+            $this->logger->info('already guest -> update');
+            if (!empty($userData)) {
                 $mainData = $userData;
                 $billingAddress = $userData['billingAddress'];
                 $shippingAddress = $userData['shippingAddress'];
@@ -578,10 +596,11 @@ class ExpressService
                 $this->logger->info('guest data updated');
                 return true;
             }
-            $this->logger->info('geust not yet registered, can not update');
-            return false;
+            $this->logger->info('can not update user from request (empty data)');
+            return true;
         }
-        throw new IvyException('can not update user from request (empty data)');
+        $this->logger->info('geust not yet registered, can not update');
+        return false;
     }
 
     /**
@@ -717,9 +736,9 @@ class ExpressService
 
         $this->logger->info('Initiate a payment for an order');
         $request = new Request([], [
-            'express' => true,
+            'express'      => true,
             'iviSessionId' => $ivyPaymentSession->getId(),
-            'orderId' => $orderData['id'],
+            'orderId'      => $orderData['id'],
         ]);
         $request->setMethod('POST');
         $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
@@ -758,9 +777,9 @@ class ExpressService
 
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $jsonContent = \json_encode([
-            'id' => $ivyOrderId,
+            'id'          => $ivyOrderId,
             'referenceId' => $orderNumber,
-            'metadata' => [
+            'metadata'    => [
                 PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
             ]
         ]);
@@ -829,7 +848,7 @@ class ExpressService
         $shippingVat = $shippingPrice['calculatedTaxes'][0]['tax'];
         $shippingTotal = $shippingPrice['totalPrice'];
         */
-        
+
         // TEMP $shippingNet = $shippingTotal - $shippingVat;
 
         // TEMP $totalNet = $cartPrice['netPrice'] - $shippingNet;
@@ -870,46 +889,46 @@ class ExpressService
         foreach ($payloadLineItems as $key => $payloadLineItem) {
             /** @var lineItem $lineItem */
 
-            /*
-            $lineItem = $cartData['lineItems'][$key];
-            if ($lineItem['label'] !== $payloadLineItem['name']) {
-                $violations[] = '$payloadLineItem["name"] is ' . $payloadLineItem["name"] . ' waited ' . $lineItem['label'];
-            }
-            if ($lineItem['referencedId'] !== $payloadLineItem['referenceId']) {
-                $violations[] = '$payloadLineItem["referenceId"] is ' . $payloadLineItem["referenceId"] . ' waited ' . $lineItem['referencedId'];
-            }
-
-            $calculatedPrice = $lineItem['price'];
-            $tax = $calculatedPrice['calculatedTaxes'][0];
-            if ($tax) {
-                $netTotal = $tax['price'] - $tax['tax'];
-                $netUnitPrice = $netTotal / $calculatedPrice['quantity'];
-                $vat = $tax['tax'] / $calculatedPrice['quantity'];
-            } else {
-                $netUnitPrice = $calculatedPrice['unitPrice'];
-                $vat = 0;
-            }
-            $singleNet = $netUnitPrice;
-            $singleVat = $vat;
-            $quantity = $lineItem['quantity'];
-            $amount = ($singleNet + $singleVat) * $quantity;
-            
-            
-            if (\abs($singleNet - $payloadLineItem['singleNet']) > $accuracy) {
-                $violations[] = '$payloadLineItem["singleNet"] is ' . $payloadLineItem["singleNet"] . ' waited ' . $singleNet;
-            }
-            if (\abs($singleVat - $payloadLineItem['singleVat']) > $accuracy) {
-                $violations[] = '$payloadLineItem["singleVat"] is ' . $payloadLineItem["singleVat"] . ' waited ' . $singleVat;
-            }
-            if (\abs($amount - $payloadLineItem['amount']) > $accuracy) {
-                $violations[] = '$payloadLineItem["amount"] is ' . $payloadLineItem["amount"] . ' waited ' . $amount;
-            }
-            
-            if ((int)$quantity !== (int)$payloadLineItem['quantity']) {
-                $violations[] = '$payloadLineItem["quantity"] is ' . $payloadLineItem["quantity"] . ' waited ' . $quantity;
-            }
+        /*
+        $lineItem = $cartData['lineItems'][$key];
+        if ($lineItem['label'] !== $payloadLineItem['name']) {
+            $violations[] = '$payloadLineItem["name"] is ' . $payloadLineItem["name"] . ' waited ' . $lineItem['label'];
         }
-        */
+        if ($lineItem['referencedId'] !== $payloadLineItem['referenceId']) {
+            $violations[] = '$payloadLineItem["referenceId"] is ' . $payloadLineItem["referenceId"] . ' waited ' . $lineItem['referencedId'];
+        }
+
+        $calculatedPrice = $lineItem['price'];
+        $tax = $calculatedPrice['calculatedTaxes'][0];
+        if ($tax) {
+            $netTotal = $tax['price'] - $tax['tax'];
+            $netUnitPrice = $netTotal / $calculatedPrice['quantity'];
+            $vat = $tax['tax'] / $calculatedPrice['quantity'];
+        } else {
+            $netUnitPrice = $calculatedPrice['unitPrice'];
+            $vat = 0;
+        }
+        $singleNet = $netUnitPrice;
+        $singleVat = $vat;
+        $quantity = $lineItem['quantity'];
+        $amount = ($singleNet + $singleVat) * $quantity;
+
+
+        if (\abs($singleNet - $payloadLineItem['singleNet']) > $accuracy) {
+            $violations[] = '$payloadLineItem["singleNet"] is ' . $payloadLineItem["singleNet"] . ' waited ' . $singleNet;
+        }
+        if (\abs($singleVat - $payloadLineItem['singleVat']) > $accuracy) {
+            $violations[] = '$payloadLineItem["singleVat"] is ' . $payloadLineItem["singleVat"] . ' waited ' . $singleVat;
+        }
+        if (\abs($amount - $payloadLineItem['amount']) > $accuracy) {
+            $violations[] = '$payloadLineItem["amount"] is ' . $payloadLineItem["amount"] . ' waited ' . $amount;
+        }
+
+        if ((int)$quantity !== (int)$payloadLineItem['quantity']) {
+            $violations[] = '$payloadLineItem["quantity"] is ' . $payloadLineItem["quantity"] . ' waited ' . $quantity;
+        }
+    }
+    */
 
         if (!empty($violations)) {
             throw new IvyException(\print_r($violations, true));
@@ -1006,13 +1025,30 @@ class ExpressService
         }
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
         try {
+            // 1. here discount line item has no price yet
             $lineItem = $this->promotionItemBuilder->buildPlaceholderItem($code);
             $cart = $this->cartService->add($cart, $lineItem, $salesChannelContext);
         } catch (\Exception $e) {
             throw new IvyException('Can not add discout: ' . $e->getMessage());
         }
 
-        $lineItem = $cart->getLineItems()->last();
+        // 2. we need load validated and recalculated line item from cart, to obtain correct amount
+        $loadedLineItem = null;
+        /** @var LineItem $currentItem */
+        foreach ($cart->getLineItems() as $currentItem) {
+            if ($currentItem->isGood() ===  true) {
+                continue;
+            }
+            if ($currentItem->getPayloadValue('code') === $code) {
+                $loadedLineItem = $currentItem;
+                break;
+            }
+        }
+
+        if ($loadedLineItem === null) {
+            // 3. discout was removed from cart by one cart-processor
+            $this->logger->error('discount lineitem with code ' . $code . ' not found in cart');
+        }
 
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
@@ -1023,7 +1059,9 @@ class ExpressService
             true
         );
 
-        if ($lineItem && ($discountPrice = $lineItem->getPrice()) !== null) {
+
+        if ($loadedLineItem && ($discountPrice = $loadedLineItem->getPrice()) !== null) {
+            // 4. discout was successful added to cart
             $outputData['discount'] = [
                 'amount' => -$discountPrice->getTotalPrice(),
             ];
@@ -1108,7 +1146,7 @@ class ExpressService
     private function getToken(string $returnUrl): ?string
     {
         $query = \parse_url($returnUrl, \PHP_URL_QUERY);
-        \parse_str((string) $query, $params);
+        \parse_str((string)$query, $params);
 
         return $params['_sw_payment_token'] ?? null;
     }
