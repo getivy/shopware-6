@@ -749,9 +749,9 @@ class ExpressService
             $salesChannelContext->getContext()
         );
         $paymentHandlerData = \json_decode((string)$response->getContent(), true);
-        $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl']);
+        $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl'] ?? 'reload');
         $this->logger->info('redirectUrl: ' . $redirectUrl);
-        $paymentToken = $this->getToken(\stripslashes($paymentHandlerData['redirectUrl'] ?? ''));
+        $paymentToken = $this->getToken($$paymentHandlerData['redirectUrl'] ?? '');
         $this->logger->info('paymentToken: ' . $paymentToken);
         $this->savePaymentToken($ivyPaymentSession->getId(), $paymentToken, $salesChannelContext);
         $orderData['_sw_payment_token'] = $paymentToken;
