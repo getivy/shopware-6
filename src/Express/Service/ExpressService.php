@@ -749,13 +749,9 @@ class ExpressService
             $salesChannelContext->getContext()
         );
         $paymentHandlerData = \json_decode((string)$response->getContent(), true);
-        $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl']);
+        $redirectUrl = \stripslashes('');
         $this->logger->info('redirectUrl: ' . $redirectUrl);
-
-        // error on purpose
-        throw new IvyException();
-
-        $paymentToken = $this->getToken(\stripslashes($paymentHandlerData['redirectUrl'] ?? ''));
+        $paymentToken = $this->getToken($redirectUrl);
         $this->logger->info('paymentToken: ' . $paymentToken);
         $this->savePaymentToken($ivyPaymentSession->getId(), $paymentToken, $salesChannelContext);
         $orderData['_sw_payment_token'] = $paymentToken;
