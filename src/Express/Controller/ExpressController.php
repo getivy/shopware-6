@@ -349,7 +349,7 @@ class ExpressController extends StorefrontController
 
                 $orderData = $this->expressService->checkoutConfirm(
                     $ivyPaymentSession,
-                    $payload,
+                    $inputData,
                     $contextToken,
                     $salesChannelContext
                 );

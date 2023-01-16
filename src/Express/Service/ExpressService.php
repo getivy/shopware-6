@@ -46,6 +46,7 @@ use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 
 class ExpressService
 {
@@ -695,7 +696,7 @@ class ExpressService
 
     /**
      * @param IvyPaymentSessionEntity $ivyPaymentSession
-     * @param array $data
+     * @param RequestDataBag $data
      * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
      * @return array
@@ -703,7 +704,7 @@ class ExpressService
      */
     public function checkoutConfirm(
         IvyPaymentSessionEntity $ivyPaymentSession,
-        array $data,
+        RequestDataBag $data,
         string $contextToken,
         SalesChannelContext $salesChannelContext
     ): array
@@ -713,10 +714,11 @@ class ExpressService
         $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
 
         /** @var JsonResponse $response */
-        $response = $this->salesChannelProxyController->proxy('checkout/order',
+        $response = $this->salesChannelProxyController->proxyCreateOrder(
             $salesChannelContext->getSalesChannelId(),
             $request,
-            $salesChannelContext->getContext()
+            $salesChannelContext->getContext(),
+            $data
         );
 
         $responseContent = (string)$response->getContent();
@@ -742,7 +744,7 @@ class ExpressService
         $this->ivyPaymentSessionRepository->upsert([
             [
                 'id'              => $ivyPaymentSession->getId(),
-                'status'          => $data['status'] ?? 'createOrder',
+                'status'          => 'createOrder',
                 'swOrderId'       => $orderData['id'],
                 'expressTempData' => $tempData,
             ]
