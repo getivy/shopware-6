@@ -600,7 +600,7 @@ class ExpressService
             $this->logger->info('can not update user from request (empty data)');
             return true;
         }
-        $this->logger->info('geust not yet registered, can not update');
+        $this->logger->info('guest not yet registered, can not update');
         return false;
     }
 
@@ -734,7 +734,7 @@ class ExpressService
         }
 
         if (!$created) {
-            throw new IvyException('order can not be created');
+            throw new IvyException('order can not be created: '. $responseContent);
         }
 
         $tempData = $ivyPaymentSession->getExpressTempData();
@@ -803,7 +803,7 @@ class ExpressService
         try {
             $this->ivyApiClient->sendApiRequest('order/update', $config, $jsonContent);
         } catch (\Exception $e) {
-            $this->logger->error('cann not update ivy order: ' . $e->getMessage());
+            $this->logger->error('can not update ivy order: ' . $e->getMessage());
         }
     }
 
