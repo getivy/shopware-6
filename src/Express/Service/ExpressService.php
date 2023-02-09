@@ -457,6 +457,7 @@ class ExpressService
      */
     public function getIvySessionByReference(string $referenceId): ?IvyPaymentSessionEntity
     {
+        // TODO: use Ivy API instead of storing temp session data
         $context = Context::createDefaultContext();
         if (\mb_strlen($referenceId, '8bit') !== 32 || !\preg_match('/' . Uuid::VALID_PATTERN . '/', $referenceId)) {
             // if reference with ordernumber updated
