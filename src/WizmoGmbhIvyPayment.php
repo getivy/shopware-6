@@ -22,6 +22,7 @@ use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
 use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
+use Shopware\Core\Framework\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 use WizmoGmbh\IvyPayment\Setup\DataHolder\Tables;
