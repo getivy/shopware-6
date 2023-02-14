@@ -44,10 +44,6 @@ use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
-use function hash_hmac;
-use function json_decode;
-use function print_r;
-use function round;
 
 class ExpressService
 {
@@ -211,7 +207,7 @@ class ExpressService
             $delivery = $cart->getDeliveries()->first();
             if ($delivery) {
                 $shippingMethods[] = [
-                    'price'     => round($delivery->getShippingCosts()->getTotalPrice(), 2),
+                    'price'     => \round($delivery->getShippingCosts()->getTotalPrice(), 2),
                     'name'      => $shippingMethod->getName(),
                     'reference' => $shippingMethod->getId(),
                     'countries' => $countries,
@@ -220,7 +216,7 @@ class ExpressService
                 $this->logger->info('not delivery found in cart. skip.');
             }
         }
-        $this->logger->debug('allowed shippings: ' . print_r($shippingMethods, true));
+        $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
         $outputData['shippingMethods'] = $shippingMethods;
     }
 
@@ -346,7 +342,7 @@ class ExpressService
     public function sign(string $body, SalesChannelContext $salesChannelContext): string
     {
         $config = $this->configHandler->getFullConfig($salesChannelContext);
-        return hash_hmac(
+        return \hash_hmac(
             'sha256',
             $body,
             $config['IvyWebhookSecret']
@@ -380,7 +376,7 @@ class ExpressService
             $request,
             $salesChannelContext->getContext()
         );
-        $customerData = json_decode((string)$response->getContent(), true);
+        $customerData = \json_decode((string)$response->getContent(), true);
         if (isset($customerData['guest']) && $customerData['guest']) {
             $this->logger->info('already guest -> update');
             if (!empty($userData)) {
@@ -445,7 +441,7 @@ class ExpressService
     {
         $billingAddress = $data['billingAddress'] ?? $data['shippingAddress'] ?? $data['shipping']['shippingAddress'] ?? [];
         $shippingAddress = $data['shippingAddress'] ?? $data['shipping']['shippingAddress'] ?? [];
-        $this->logger->debug('received address: ' . print_r($billingAddress, true));
+        $this->logger->debug('received address: ' . \print_r($billingAddress, true));
         if (\is_array($billingAddress) && !empty($billingAddress)) {
             $countryId = $this->getCountryIdFromAddress($billingAddress, $salesChannelContext);
             $shippingCountryId = $this->getCountryIdFromAddress($shippingAddress, $salesChannelContext);
@@ -547,7 +543,7 @@ class ExpressService
         $responseContent = (string)$response->getContent();
         $created = false;
         if (!empty($responseContent)) {
-            $orderData = json_decode($responseContent, true);
+            $orderData = \json_decode($responseContent, true);
             if (\is_array($orderData) && !empty($orderData['id'])) {
                 $created = true;
                 $this->logger->info('created order ' . $orderData['orderNumber'] . ' (' . $orderData['id'] . ')');
@@ -575,7 +571,7 @@ class ExpressService
             $request,
             $salesChannelContext->getContext()
         );
-        $paymentHandlerData = json_decode((string)$response->getContent(), true);
+        $paymentHandlerData = \json_decode((string)$response->getContent(), true);
         $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl'] ?? '');
         $this->logger->info('redirectUrl: ' . $redirectUrl);
         $paymentToken = $this->getToken($redirectUrl);
@@ -610,7 +606,7 @@ class ExpressService
                 PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
             ]
         ]);
-        $this->logger->debug('update ivy order: ' . print_r($jsonContent, true));
+        $this->logger->debug('update ivy order: ' . \print_r($jsonContent, true));
         try {
             $this->ivyApiClient->sendApiRequest('order/update', $config, $jsonContent);
         } catch (\Exception $e) {
@@ -666,7 +662,7 @@ class ExpressService
             $request,
             $salesChannelContext->getContext()
         );
-        $cartData = json_decode((string)$response->getContent(), true);
+        $cartData = \json_decode((string)$response->getContent(), true);
 
         $cartPrice = $cartData['price'];
 
@@ -689,7 +685,7 @@ class ExpressService
         }
 
         if (!empty($violations)) {
-            throw new IvyException(print_r($violations, true));
+            throw new IvyException(\print_r($violations, true));
         }
     }
 
@@ -736,7 +732,7 @@ class ExpressService
     public function setShippingMethod(array $payload, string $contextToken, SalesChannelContext $salesChannelContext): string
     {
         $shippingMethod = $payload['shippingMethod'];
-        $this->logger->info('set shipping method:  ' . print_r($shippingMethod, true));
+        $this->logger->info('set shipping method:  ' . \print_r($shippingMethod, true));
 
         $request = new Request([], [
             'paymentMethodId'  => $this->getPaymentMethodId(),
@@ -752,7 +748,7 @@ class ExpressService
             $salesChannelContext->getContext()
         );
 
-        $contextData = json_decode((string)$response->getContent(), true);
+        $contextData = \json_decode((string)$response->getContent(), true);
 
         $newToken = $contextData['contextToken'];
         $this->logger->info('update context ' . $newToken);
