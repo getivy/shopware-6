@@ -100,6 +100,7 @@ class ExpressService
      * @param ConfigHandler $configHandler
      * @param RouterInterface $router
      * @param createIvyOrderData $createIvyOrderData
+     * @param EntityRepositoryInterface $ivyPaymentSessionRepository
      * @param SalesChannelRepositoryInterface $countryRepository
      * @param ApiClient $ivyApiClient
      * @param SalesChannelContextSwitcher $channelContextSwitcher

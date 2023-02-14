@@ -33,7 +33,7 @@ class WizmoGmbhIvyPayment extends Plugin
     {
         parent::build($container);
     }
-    
+
     public function install(InstallContext $context): void
     {
         $this->addPaymentMethod($context->getContext());

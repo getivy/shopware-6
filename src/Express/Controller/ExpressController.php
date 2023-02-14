@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\IvyJsonResponse;
+use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;

@@ -65,7 +65,7 @@ class IvyPaymentService
         OrderTransactionStateHandler $transactionStateHandler,
         LoggerInterface $logger,
         EntityRepositoryInterface $orderRepository,
-        SalesChannelContextServiceInterface $contextService,
+        SalesChannelContextServiceInterface $contextService
     ) {
         $this->paymentProcessor = $paymentProcessor;
         $this->tokenFactory = $tokenFactory;
