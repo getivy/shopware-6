@@ -52,7 +52,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private ApiClient $apiClient;
 
-    private ExpressService $expressService;
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
@@ -62,7 +61,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      * @param ConfigHandler $configHandler
      * @param ApiClient $apiClient
      * @param IvyLogger $logger
-     * @param ExpressService $expressService
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
@@ -71,8 +69,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $ivyPaymentSessionRepository,
         ConfigHandler $configHandler,
         ApiClient $apiClient,
-        IvyLogger $logger,
-        ExpressService $expressService
+        IvyLogger $logger
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
@@ -82,7 +79,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         $this->logger = $logger;
         $this->apiClient = $apiClient;
-        $this->expressService = $expressService;
     }
 
     /**
@@ -110,12 +106,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             $this->logger->info('checkout needs to be created');
             try {
                 $order = $this->getOrderById($dataBag->get('orderId'), $salesChannelContext);
-                $returnUrl = $this->expressService->createCheckoutSession(
-                    $contextToken,
-                    $salesChannelContext,
-                    false,
-                    $order
-                );
                 return new RedirectResponse($returnUrl);
             } catch (\Exception $e) {
                 throw new AsyncPaymentProcessException(
