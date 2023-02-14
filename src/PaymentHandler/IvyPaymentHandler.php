@@ -31,6 +31,7 @@ use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
+use WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
@@ -52,6 +53,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private ApiClient $apiClient;
 
+    private IvyCheckoutSession $ivyCheckoutSession;
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
@@ -61,6 +63,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      * @param ConfigHandler $configHandler
      * @param ApiClient $apiClient
      * @param IvyLogger $logger
+     * @param IvyCheckoutSession $ivyCheckoutSession
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
@@ -69,7 +72,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $ivyPaymentSessionRepository,
         ConfigHandler $configHandler,
         ApiClient $apiClient,
-        IvyLogger $logger
+        IvyLogger $logger,
+        IvyCheckoutSession $ivyCheckoutSession
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
@@ -79,6 +83,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         $this->logger = $logger;
         $this->apiClient = $apiClient;
+        $this->ivyCheckoutSession = $ivyCheckoutSession;
     }
 
     /**
@@ -106,6 +111,12 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             $this->logger->info('checkout needs to be created');
             try {
                 $order = $this->getOrderById($dataBag->get('orderId'), $salesChannelContext);
+                $returnUrl = $this->ivyCheckoutSession->createCheckoutSession(
+                    $contextToken,
+                    $salesChannelContext,
+                    false,
+                    $order
+                );
                 return new RedirectResponse($returnUrl);
             } catch (\Exception $e) {
                 throw new AsyncPaymentProcessException(
