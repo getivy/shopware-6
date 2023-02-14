@@ -19,10 +19,19 @@ use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentExcepti
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Encoder\XmlEncoder;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
+use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
+use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
+use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 
@@ -31,28 +40,48 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 {
     private OrderTransactionStateHandler $transactionStateHandler;
 
+    private ConfigHandler $configHandler;
+
+    private createIvyOrderData $createIvyOrderData;
+
+    private EntityRepositoryInterface $ivyPaymentSessionRepository;
+
     private EntityRepositoryInterface $orderRepository;
 
     private IvyLogger $logger;
+
+    private ApiClient $apiClient;
 
     private ExpressService $expressService;
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param EntityRepositoryInterface $orderRepository
+     * @param createIvyOrderData $createIvyOrderData
+     * @param EntityRepositoryInterface $ivyPaymentSessionRepository
+     * @param ConfigHandler $configHandler
+     * @param ApiClient $apiClient
      * @param IvyLogger $logger
      * @param ExpressService $expressService
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
         EntityRepositoryInterface $orderRepository,
+        createIvyOrderData $createIvyOrderData,
+        EntityRepositoryInterface $ivyPaymentSessionRepository,
+        ConfigHandler $configHandler,
+        ApiClient $apiClient,
         IvyLogger $logger,
         ExpressService $expressService
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
+        $this->createIvyOrderData = $createIvyOrderData;
+        $this->ivyPaymentSessionRepository = $ivyPaymentSessionRepository;
+        $this->configHandler = $configHandler;
 
         $this->logger = $logger;
+        $this->apiClient = $apiClient;
         $this->expressService = $expressService;
     }
 
