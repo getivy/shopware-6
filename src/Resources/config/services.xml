@@ -13,11 +13,6 @@
 
     <services>
 
-        <!--***Core Entity Definitions***-->
-        <service id="WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionDefinition">
-            <tag name="shopware.entity.definition" entity="wizmogmbh_ivypayment"/>
-        </service>
-
         <service id="WizmoGmbh\IvyPayment\Services\IvyPaymentService">
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentTransactionChainProcessor"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
