@@ -35,6 +35,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
@@ -51,6 +52,8 @@ class IvyPaymentController extends StorefrontController
 
     private EntityRepositoryInterface $orderRepository;
 
+    private EntityRepositoryInterface $ivyPaymentSessionRepository;
+
     private ConfigHandler $configHandler;
 
     private ApiClient $ivyApiClient;
@@ -64,6 +67,7 @@ class IvyPaymentController extends StorefrontController
      * @param OrderConverter $orderConverter
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepositoryInterface $ivyPaymentSessionRepository
      * @param ConfigHandler $configHandler
      * @param ApiClient $ivyApiClient
      * @param IvyLogger $logger
@@ -74,6 +78,7 @@ class IvyPaymentController extends StorefrontController
         OrderConverter $orderConverter,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
         EntityRepositoryInterface $orderRepository,
+        EntityRepositoryInterface $ivyPaymentSessionRepository,
         ConfigHandler $configHandler,
         ApiClient $ivyApiClient,
         IvyLogger $logger,
@@ -83,6 +88,7 @@ class IvyPaymentController extends StorefrontController
         $this->orderConverter = $orderConverter;
         $this->tokenFactoryInterfaceV2 = $tokenFactoryInterfaceV2;
         $this->orderRepository = $orderRepository;
+        $this->ivyPaymentSessionRepository = $ivyPaymentSessionRepository;
         $this->configHandler = $configHandler;
         $this->ivyApiClient = $ivyApiClient;
         $this->logger = $logger;

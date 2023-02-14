@@ -31,6 +31,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceInterface;
+use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceParameters;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
@@ -49,6 +50,10 @@ class IvyPaymentService
 
     private OrderTransactionStateHandler $transactionStateHandler;
 
+    private EntityRepositoryInterface $orderRepository;
+
+    private SalesChannelContextServiceInterface $contextService;
+
     private LoggerInterface $logger;
 
     public function __construct(
@@ -58,7 +63,9 @@ class IvyPaymentService
         PaymentHandlerRegistry $paymentHandlerRegistry,
         EntityRepositoryInterface $orderTransactionRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        EntityRepositoryInterface $orderRepository,
+        SalesChannelContextServiceInterface $contextService,
     ) {
         $this->paymentProcessor = $paymentProcessor;
         $this->tokenFactory = $tokenFactory;
@@ -67,6 +74,8 @@ class IvyPaymentService
         $this->orderTransactionRepository = $orderTransactionRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->logger = $logger;
+        $this->orderRepository = $orderRepository;
+        $this->contextService = $contextService;
     }
 
     /**

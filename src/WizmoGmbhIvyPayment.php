@@ -29,6 +29,11 @@ use WizmoGmbh\IvyPayment\Setup\Uninstaller;
 
 class WizmoGmbhIvyPayment extends Plugin
 {
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+    }
+    
     public function install(InstallContext $context): void
     {
         $this->addPaymentMethod($context->getContext());
@@ -44,6 +49,11 @@ class WizmoGmbhIvyPayment extends Plugin
     {
         $this->setPaymentMethodIsActive(false, $context->getContext());
         parent::deactivate($context);
+    }
+
+    public function update(UpdateContext $context): void
+    {
+        parent::update($context);
     }
 
     public function uninstall(UninstallContext $context): void
