@@ -41,5 +41,8 @@ export default class IvyPaymentPlugin extends Plugin {
         cancelable: true,
       })
     );
+    if (typeof initIvyButton === 'function') {
+        initIvyButton();
+    }
   }
 }
