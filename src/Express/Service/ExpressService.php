@@ -41,6 +41,7 @@ use Symfony\Component\Routing\RouterInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
+use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 use function hash_hmac;
 use function json_decode;
@@ -85,6 +86,8 @@ class ExpressService
 
     private RegisterRoute $registerRoute;
 
+    private ApiClient $ivyApiClient;
+
     /**
      * @param EntityRepository $salesChannelRepo
      * @param EntityRepository $paymentRepository
@@ -123,7 +126,8 @@ class ExpressService
         AbstractShippingMethodRoute $shippingMethodRoute,
         SalesChannelProxyController $salesChannelProxyController,
         Logger $logger,
-        AbstractRegisterRoute $registerRoute
+        AbstractRegisterRoute $registerRoute,
+        ApiClient $ivyApiClient
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->salesChannelRepo = $salesChannelRepo;
@@ -147,6 +151,7 @@ class ExpressService
         $plugin = $pluginRepository->search($criteria, Context::createDefaultContext())->first();
         $this->version = $plugin->getVersion();
         $this->registerRoute = $registerRoute;
+        $this->ivyApiClient = $ivyApiClient;
     }
 
     /**
@@ -533,6 +538,21 @@ class ExpressService
 
         $this->logger->info('created order: '. $order->getOrderNumber());
         $this->logger->info('update ivy order with new referenceId: ' . $order->getId());
+
+        $config = $this->configHandler->getFullConfig($salesChannelContext);
+
+        $this->logger->info('update order over ivy api');
+        $ivyOrderId = $payload['id'];
+        $ivyResponse = $this->ivyApiClient->sendApiRequest('order/update', $config, \json_encode([
+            'id' => $ivyOrderId,
+            'displayId' => $order->getOrderNumber(),
+            'referenceId' => $order->getId(),
+            'metadata' => [
+                '_sw_payment_token' => $paymentToken,
+                'shopwareOrderId' => $order->getOrderNumber()
+            ]
+        ]));
+        $this->logger->info('ivy response: ' . \print_r($ivyResponse, true));
 
         return [
             $order,

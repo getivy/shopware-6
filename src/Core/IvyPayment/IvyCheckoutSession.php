@@ -13,8 +13,6 @@ use Shopware\Core\Framework\Plugin\PluginEntity;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
-use Shopware\Storefront\Framework\Routing\Router;
-use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Component\Serializer\Serializer;
@@ -34,17 +32,14 @@ class IvyCheckoutSession
 
     private string $version;
 
-    private RouterInterface $router;
-
     public function __construct(
-        EntityRepository $pluginRepository,
-        ConfigHandler $configHandler,
+        EntityRepository   $pluginRepository,
+        ConfigHandler      $configHandler,
         createIvyOrderData $createIvyOrderData,
-        ApiClient $ivyApiClient,
-        RouterInterface $router
-    ) {
+        ApiClient          $ivyApiClient,
+    )
+    {
         $this->configHandler = $configHandler;
-        $this->router = $router;
         $this->createIvyOrderData = $createIvyOrderData;
         $this->ivyApiClient = $ivyApiClient;
         $encoders = [new XmlEncoder(), new JsonEncoder()];
@@ -62,6 +57,7 @@ class IvyCheckoutSession
      * @param SalesChannelContext $salesChannelContext
      * @param bool $express
      * @param OrderEntity|null $order
+     * @param Cart|null $cart
      * @return string
      * @throws Exception
      * @throws IvyApiException

@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\Subscriber;
 
+use Doctrine\DBAL\Exception;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -51,7 +52,7 @@ class ButtonSubscriber implements EventSubscriberInterface
     /**
      * @param PageLoadedEvent $event
      * @return void
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function onIvyButtonLoaded(PageLoadedEvent $event): void
     {

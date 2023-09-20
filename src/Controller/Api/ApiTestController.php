@@ -17,14 +17,12 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 
-/**
- * @Route(defaults={"_routeScope"={"administration"}})
- */
+#[Route(
+    defaults: ["_routeScope" => ["administration"]]
+)]
 class ApiTestController
 {
-    /**
-     * @Route(path="/api/_action/ivy-api-test/verify")
-     */
+    #[Route('/api/_action/ivy-api-test/verify')]
     public function check(RequestDataBag $dataBag): JsonResponse
     {
         $env = $dataBag->get('environment');
@@ -70,7 +68,7 @@ class ApiTestController
             $ivyResponse = $client->post('merchant/app/check-integration-ready', $options);
 
             if ($ivyResponse->getStatusCode() === 200) {
-                $ivyResponseArray = \json_decode((string) $ivyResponse->getBody(), true);
+                $ivyResponseArray = \json_decode((string)$ivyResponse->getBody(), true);
 
                 $response['success'] = $ivyResponseArray['ready'];
                 $response['message'] = '';
