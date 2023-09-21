@@ -153,7 +153,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         $transactionId = $transaction->getOrderTransaction()->getId();
 
         /** @var array $payload */
-        $payload = $request->request->get('payload');
+        $payload = $request->request->all()['payload'] ?? [];
         $paymentState = $payload['status'] ?? null;
 
         $this->logger->debug("paymentState: $paymentState");

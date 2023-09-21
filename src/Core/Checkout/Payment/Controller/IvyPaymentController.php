@@ -18,7 +18,6 @@ use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentExcepti
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
-use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\ShopwareHttpException;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -45,17 +44,21 @@ class IvyPaymentController extends StorefrontController
 
     private ExpressService $expressService;
 
+    private mixed $privateDir;
+
     /**
      * @param IvyPaymentService $paymentService
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param IvyLogger $logger
      * @param ExpressService $expressService
+     * @param array $privatePath
      */
     public function __construct(
         IvyPaymentService       $paymentService,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
         IvyLogger               $logger,
-        ExpressService          $expressService
+        ExpressService          $expressService,
+        array $privatePath
     )
     {
         $this->paymentService = $paymentService;
@@ -63,6 +66,7 @@ class IvyPaymentController extends StorefrontController
         $this->logger = $logger;
         $this->logger->setName('WEBHOOK');
         $this->expressService = $expressService;
+        $this->privateDir = $privatePath['config']['root'];;
     }
 
     #[Route('/ivypayment/failed-transaction',
@@ -118,9 +122,10 @@ class IvyPaymentController extends StorefrontController
     public function updateTransaction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
         $this->logger->setName('WEBHOOK');
+        $this->logger->info('recieved new webhook');
         $type = $request->request->get('type');
         /** @var array $payload */
-        $payload = $request->request->get('payload');
+        $payload = $inputData->get('payload')?->all();
 
         if (empty($type) || empty($payload)) {
             $this->logger->error('bad webhook request');
@@ -142,7 +147,7 @@ class IvyPaymentController extends StorefrontController
         }
 
         if (!isset($payload['status'])) {
-            $this->logger->error('bad webhook request');
+            $this->logger->error('bad webhook request, status not set');
             return new JsonResponse(['success' => false, 'error' => 'bad webhook request'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -157,7 +162,8 @@ class IvyPaymentController extends StorefrontController
         $referenceId = $payload['referenceId'];
         $ivyOrderId = $payload['id'];
         $lockName = 'ivylock_' . $ivyOrderId . '.lock';
-        $tmpdir = \sys_get_temp_dir();
+        $tmpdir = $this->privateDir;
+
         $fp = \fopen($tmpdir . $lockName, 'wb');
 
         $count = 0;
@@ -224,6 +230,7 @@ class IvyPaymentController extends StorefrontController
 
         $this->logger->debug('webhook finished  <== ' . $type);
 
+        unlink($tmpdir . $lockName);
         return new JsonResponse(null, Response::HTTP_OK);
     }
 
