@@ -44,7 +44,7 @@ class IvyPaymentController extends StorefrontController
 
     private ExpressService $expressService;
 
-    private mixed $privateDir;
+    private string $privateDir;
 
     /**
      * @param IvyPaymentService $paymentService
