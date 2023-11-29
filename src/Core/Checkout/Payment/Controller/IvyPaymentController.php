@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\Core\Checkout\Payment\Controller;
 
+use Doctrine\DBAL\Exception;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
@@ -17,7 +18,6 @@ use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentExcepti
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
-use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\ShopwareHttpException;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -27,15 +27,13 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
-use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
-use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 
-/**
- * @Route(defaults={"_routeScope"={"storefront"}})
- */
+
+#[Route(defaults: ["_routeScope" => ["storefront"]])]
 class IvyPaymentController extends StorefrontController
 {
     private IvyPaymentService $paymentService;
@@ -46,39 +44,37 @@ class IvyPaymentController extends StorefrontController
 
     private ExpressService $expressService;
 
-    private ConfigHandler $configHandler;
-
-    private ApiClient $ivyApiClient;
+    private string $privateDir;
 
     /**
      * @param IvyPaymentService $paymentService
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param IvyLogger $logger
      * @param ExpressService $expressService
-     * @param ConfigHandler $configHandler
-     * @param ApiClient $ivyApiClient
+     * @param array $privatePath
      */
     public function __construct(
-        IvyPaymentService $paymentService,
+        IvyPaymentService       $paymentService,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
-        IvyLogger $logger,
-        ExpressService $expressService,
-        ConfigHandler $configHandler,
-        ApiClient $ivyApiClient
-    ) {
+        IvyLogger               $logger,
+        ExpressService          $expressService,
+        array $privatePath
+    )
+    {
         $this->paymentService = $paymentService;
-        $this->configHandler = $configHandler;
         $this->tokenFactoryInterfaceV2 = $tokenFactoryInterfaceV2;
         $this->logger = $logger;
         $this->logger->setName('WEBHOOK');
         $this->expressService = $expressService;
-        $this->ivyApiClient = $ivyApiClient;
+        $this->privateDir = $privatePath['config']['root'];;
     }
 
+    #[Route('/ivypayment/failed-transaction',
+        name: 'frontend.ivypayment.failed.transaction',
+        defaults: ["XmlHttpRequest" => true],
+        methods: ['POST', 'GET']
+    )]
     /**
-     * @Since("6.0.0.0")
-     * @Route("/ivypayment/failed-transaction", name="frontend.ivypayment.failed.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
-     *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException
      * @throws InvalidTransactionException
@@ -110,22 +106,26 @@ class IvyPaymentController extends StorefrontController
         return new RedirectResponse($finishUrl);
     }
 
+    #[Route('/ivypayment/update-transaction',
+        name: 'frontend.ivypayment.update.transaction',
+        defaults: ["XmlHttpRequest" => true, 'csrf_protected' => false, 'auth_required' => false],
+        methods: ['POST', 'GET']
+    )]
     /**
-     * @Since("6.0.0.0")
-     * @Route("/ivypayment/update-transaction", name="ivypayment.update.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true,"csrf_protected"=false,"auth_required"=false})
-     *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException
      * @throws InvalidTransactionException
      * @throws TokenExpiredException
-     * @throws UnknownPaymentMethodException|\Doctrine\DBAL\Exception|\WizmoGmbh\IvyPayment\Exception\IvyException
+     * @throws UnknownPaymentMethodException|Exception|IvyException
      * @psalm-suppress InvalidArrayAccess
      */
     public function updateTransaction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
+        $this->logger->setName('WEBHOOK');
+        $this->logger->info('recieved new webhook');
         $type = $request->request->get('type');
         /** @var array $payload */
-        $payload = $request->request->get('payload');
+        $payload = $inputData->get('payload')?->all();
 
         if (empty($type) || empty($payload)) {
             $this->logger->error('bad webhook request');
@@ -147,7 +147,7 @@ class IvyPaymentController extends StorefrontController
         }
 
         if (!isset($payload['status'])) {
-            $this->logger->error('bad webhook request');
+            $this->logger->error('bad webhook request, status not set');
             return new JsonResponse(['success' => false, 'error' => 'bad webhook request'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -162,7 +162,8 @@ class IvyPaymentController extends StorefrontController
         $referenceId = $payload['referenceId'];
         $ivyOrderId = $payload['id'];
         $lockName = 'ivylock_' . $ivyOrderId . '.lock';
-        $tmpdir = \sys_get_temp_dir();
+        $tmpdir = $this->privateDir;
+
         $fp = \fopen($tmpdir . $lockName, 'wb');
 
         $count = 0;
@@ -204,20 +205,6 @@ class IvyPaymentController extends StorefrontController
             /** @var OrderEntity $order */
             [$order, $token] = $this->expressService->checkoutConfirm($inputData, $payload, $salesChannelContext);
 
-            $config = $this->configHandler->getFullConfig($salesChannelContext);
-
-            $this->logger->info('update order over ivy api');
-            $ivyResponse = $this->ivyApiClient->sendApiRequest('order/update', $config, \json_encode([
-                'id' => $ivyOrderId,
-                'displayId' => $order->getOrderNumber(),
-                'referenceId' => $order->getId(),
-                'metadata' => [
-                    '_sw_payment_token' => $token,
-                    'shopwareOrderId' => $order->getOrderNumber()
-                ]
-            ]));
-            $this->logger->info('ivy response: ' . \print_r($ivyResponse, true));
-            
             $outputData = [
                 "success" => true
             ];
@@ -242,14 +229,17 @@ class IvyPaymentController extends StorefrontController
         }
 
         $this->logger->debug('webhook finished  <== ' . $type);
-        
+
+        unlink($tmpdir . $lockName);
         return new JsonResponse(null, Response::HTTP_OK);
     }
 
+    #[Route('/ivypayment/finalize-transaction',
+        name: 'frontend.ivypayment.finalize.transaction',
+        defaults: ["XmlHttpRequest" => true],
+        methods: ['POST', 'GET']
+    )]
     /**
-     * @Since("6.0.0.0")
-     * @Route("/ivypayment/finalize-transaction", name="frontend.ivypayment.finalize.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
-     *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException
      * @throws InvalidTransactionException

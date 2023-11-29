@@ -29,8 +29,8 @@ class Uninstaller
         }
 
         foreach ($tables as $table) {
-            if ($this->connection->getSchemaManager()->tablesExist([$table])) {
-                $this->connection->getSchemaManager()->dropTable($table);
+            if ($this->connection->createSchemaManager()->tablesExist([$table])) {
+                $this->connection->createSchemaManager()->dropTable($table);
             }
         }
     }

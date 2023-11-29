@@ -17,12 +17,10 @@ use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandle
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerRegistry;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentFinalizeException;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
-use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\PaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
-use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -33,8 +31,6 @@ use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class IvyPaymentService
 {
-    private EntityRepository $paymentMethodRepository;
-
     private PaymentHandlerRegistry $paymentHandlerRegistry;
 
     private EntityRepository $orderTransactionRepository;
@@ -44,13 +40,11 @@ class IvyPaymentService
     private LoggerInterface $logger;
 
     public function __construct(
-        EntityRepository $paymentMethodRepository,
         PaymentHandlerRegistry $paymentHandlerRegistry,
         EntityRepository $orderTransactionRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         LoggerInterface $logger
     ) {
-        $this->paymentMethodRepository = $paymentMethodRepository;
         $this->paymentHandlerRegistry = $paymentHandlerRegistry;
         $this->orderTransactionRepository = $orderTransactionRepository;
         $this->transactionStateHandler = $transactionStateHandler;
@@ -68,14 +62,14 @@ class IvyPaymentService
      */
     public function updateTransaction(string $transactionId, string $paymentMethodId, Request $request, SalesChannelContext $context): void
     {
-        if ($transactionId === null || !Uuid::isValid($transactionId)) {
+        if (!Uuid::isValid($transactionId)) {
             throw new AsyncPaymentProcessException((string) $transactionId, "No valid orderTransactionId was provided.");
         }
 
         $transaction = $this->getPaymentTransactionStruct($transactionId, $context->getContext());
 
         /** @var IvyPaymentHandler $paymentHandler */
-        $paymentHandler = $this->getPaymentHandlerById($paymentMethodId ?? '', $context->getContext());
+        $paymentHandler = $this->paymentHandlerRegistry->getAsyncPaymentHandler($paymentMethodId);
 
         if ($paymentHandler === null) {
             throw new UnknownPaymentMethodException($paymentMethodId);
@@ -93,23 +87,6 @@ class IvyPaymentService
         $this->transactionStateHandler->cancel($transactionId, $context->getContext());
     }
 
-    /**
-     * @throws UnknownPaymentMethodException
-     */
-    private function getPaymentHandlerById(string $paymentMethodId, Context $context): ?AsynchronousPaymentHandlerInterface
-    {
-        $criteria = new Criteria([$paymentMethodId]);
-        $criteria->addAssociation('appPaymentMethod.app');
-        $paymentMethods = $this->paymentMethodRepository->search($criteria, $context);
-
-        /** @var PaymentMethodEntity|null $paymentMethod */
-        $paymentMethod = $paymentMethods->get($paymentMethodId);
-        if ($paymentMethod === null) {
-            throw new UnknownPaymentMethodException($paymentMethodId);
-        }
-
-        return $this->paymentHandlerRegistry->getAsyncHandlerForPaymentMethod($paymentMethod);
-    }
 
     /**
      * @throws InvalidTransactionException

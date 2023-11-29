@@ -153,7 +153,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         $transactionId = $transaction->getOrderTransaction()->getId();
 
         /** @var array $payload */
-        $payload = $request->request->get('payload');
+        $payload = $request->request->all()['payload'] ?? [];
         $paymentState = $payload['status'] ?? null;
 
         $this->logger->debug("paymentState: $paymentState");
@@ -207,7 +207,9 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
     }
 
     /**
-     * @return OrderEntity|null
+     * @param string $id
+     * @param SalesChannelContext $salesChannelContext
+     * @return OrderEntity
      */
     private function getOrderById(string $id, SalesChannelContext $salesChannelContext): OrderEntity
     {
@@ -216,9 +218,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             ->addAssociation('transactions.paymentMethod')
             ->addAssociation('deliveries.shippingMethod')
             ->addAssociation('orderCustomer.customer')
-            ->addAssociation('lineItems')
             ->addAssociation('lineItems.cover')
-            ->addAssociation('addresses')
             ->addAssociation('currency')
             ->addAssociation('addresses.country')
             ->addAssociation('addresses.countryState')

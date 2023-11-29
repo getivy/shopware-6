@@ -20,42 +20,43 @@ use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
-use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 use WizmoGmbh\IvyPayment\Setup\DataHolder\Tables;
 use WizmoGmbh\IvyPayment\Setup\Uninstaller;
 
 class WizmoGmbhIvyPayment extends Plugin
 {
-    public function install(InstallContext $context): void
+    public function install(InstallContext $installContext): void
     {
-        $this->addPaymentMethod($context->getContext());
+        $this->addPaymentMethod($installContext->getContext());
     }
 
-    public function activate(ActivateContext $context): void
+    public function activate(ActivateContext $activateContext): void
     {
-        $this->setPaymentMethodIsActive(true, $context->getContext());
-        parent::activate($context);
+        $this->setPaymentMethodIsActive(true, $activateContext->getContext());
+        parent::activate($activateContext);
     }
 
-    public function deactivate(DeactivateContext $context): void
+    public function deactivate(DeactivateContext $deactivateContext): void
     {
-        $this->setPaymentMethodIsActive(false, $context->getContext());
-        parent::deactivate($context);
+        $this->setPaymentMethodIsActive(false, $deactivateContext->getContext());
+        parent::deactivate($deactivateContext);
     }
 
-    public function uninstall(UninstallContext $context): void
+    public function uninstall(UninstallContext $uninstallContext): void
     {
         $tables = Tables::$tables;
-        $this->getUninstaller()->uninstall($context, $tables);
+        $this->getUninstaller()->uninstall($uninstallContext, $tables);
 
         // Only set the payment method to inactive when uninstalling. Removing the payment method would
         // cause data consistency issues, since the payment method might have been used in several orders
-        $this->setPaymentMethodIsActive(false, $context->getContext());
+        $this->setPaymentMethodIsActive(false, $uninstallContext->getContext());
     }
 
+    /**
+     * @throws \Exception
+     */
     private function getUninstaller(): Uninstaller
     {
         return new Uninstaller($this->getConnection());
