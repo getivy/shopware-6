@@ -69,6 +69,7 @@ class IvyCheckoutSession
     public function createCheckoutSession(string $contextToken, SalesChannelContext $salesChannelContext, bool $express, OrderEntity $order = null, Cart $cart = null): string
     {
         $config = $this->configHandler->getFullConfig($salesChannelContext);
+
         if ($order) {
             $ivySessionData = $this->createIvyOrderData->getSessionCreateDataFromOrder($order, $config);
             $referenceId = $order->getId();
@@ -85,6 +86,15 @@ class IvyCheckoutSession
             throw new IvyApiException('An order or cart must be provided');
         }
 
+        $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
+        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
+        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
+        $completeCallbackUrl = $this->router->generate('frontend.ivyexpress.confirm', [], Router::ABSOLUTE_URL);
+
+        $ivySessionData->setQuoteCallbackUrl($quoteCallbackUrl);
+        $ivySessionData->setCompleteCallbackUrl($completeCallbackUrl);
+        $ivySessionData->setErrorCallbackUrl($errorCallbackUrl);
+        $ivySessionData->setSuccessCallbackUrl($successCallbackUrl);
         $ivySessionData->setReferenceId($referenceId);
 
         //Add the token as sw-context and payment-token
